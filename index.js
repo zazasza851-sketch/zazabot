@@ -1,316 +1,314 @@
 import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
-  fetchLatestBaileysVersion,
   Browsers
 } from "@whiskeysockets/baileys";
 
+import { Boom } from "@hapi/boom";
+
 const BOT_NAME = "ZazaStore";
-const OWNER = "Zaza";
-const PREFIX = ".";
+const AUTH_FOLDER = "./auth";
 
 let reconnecting = false;
-
-const MENU = `
-╭━━━〔 🤖 ${BOT_NAME} 〕━━━╮
-│
-│ 👑 OWNER
-│ • .owner
-│
-│ ⚙️ GENERAL
-│ • .menu
-│ • .ping
-│ • .runtime
-│
-│ 🤖 AI
-│ • .openai
-│ • .bard
-│ • .nexara
-│ • .aiimage
-│
-│ 🎮 GAME
-│ • .tictactoe
-│ • .tebak
-│ • .slot
-│
-│ 🛠️ TOOLS
-│ • .sticker
-│ • .toimg
-│ • .tts
-│ • .shortlink
-│
-│ 📥 DOWNLOADER
-│ • .ytmp3
-│ • .ytmp4
-│ • .tiktok
-│ • .instagram
-│
-│ 🛒 ZAZASTORE
-│ • .produk
-│ • .harga
-│ • .order
-│ • .payment
-│
-╰━━━━━━━━━━━━━━━━━━━━╯
-`;
-
-function getText(message) {
-  return (
-    message?.conversation ||
-    message?.extendedTextMessage?.text ||
-    message?.imageMessage?.caption ||
-    message?.videoMessage?.caption ||
-    ""
-  );
-}
-
-function getCommand(text) {
-  if (!text.startsWith(PREFIX)) return "";
-  return text
-    .slice(PREFIX.length)
-    .trim()
-    .split(/\s+/)[0]
-    .toLowerCase();
-}
 
 async function startBot() {
   if (reconnecting) return;
 
   try {
+    console.log("");
+    console.log("================================");
+    console.log("🚀 Menjalankan ZazaStore...");
+    console.log("================================");
+
     const { state, saveCreds } =
-      await useMultiFileAuthState("./auth");
-
-    const { version } = await fetchLatestBaileysVersion();
-
-    console.log("=================================");
-    console.log(`🤖 ${BOT_NAME}`);
-    console.log("📡 Starting WhatsApp bot...");
-    console.log("📦 Baileys version:", version.join("."));
-    console.log("=================================");
+      await useMultiFileAuthState(AUTH_FOLDER);
 
     const sock = makeWASocket({
       auth: state,
-      version,
-      printQRInTerminal: false,
       browser: Browsers.windows("Chrome"),
+      printQRInTerminal: false,
       markOnlineOnConnect: false,
       syncFullHistory: false
     });
 
+    // Simpan session WhatsApp
     sock.ev.on("creds.update", saveCreds);
 
-    /*
-     * =========================
-     * PAIRING CODE
-     * =========================
-     */
+    // ================================
+    // CONNECTION
+    // ================================
+
+    sock.ev.on("connection.update", async (update) => {
+      const {
+        connection,
+        lastDisconnect
+      } = update;
+
+      if (connection === "connecting") {
+        console.log("🔄 Menghubungkan ke WhatsApp...");
+      }
+
+      if (connection === "open") {
+        console.log("");
+        console.log("================================");
+        console.log("✅ ZazaStore TERHUBUNG!");
+        console.log("================================");
+        console.log("");
+      }
+
+      if (connection === "close") {
+        const statusCode =
+          new Boom(lastDisconnect?.error)?.output?.statusCode;
+
+        console.log("");
+        console.log("❌ WhatsApp terputus.");
+        console.log("📌 Code:", statusCode);
+
+        if (statusCode === DisconnectReason.loggedOut) {
+          console.log("⚠️ Session logout.");
+          console.log("⚠️ Pairing ulang diperlukan.");
+          return;
+        }
+
+        if (statusCode === DisconnectReason.connectionClosed) {
+          console.log("🔄 Mencoba reconnect...");
+        }
+
+        if (statusCode === DisconnectReason.connectionLost) {
+          console.log("🔄 Koneksi hilang, reconnect...");
+        }
+
+        if (statusCode === DisconnectReason.restartRequired) {
+          console.log("🔄 WhatsApp meminta restart...");
+        }
+
+        reconnecting = true;
+
+        setTimeout(() => {
+          reconnecting = false;
+          startBot();
+        }, 5000);
+      }
+    });
+
+    // ================================
+    // PAIRING CODE
+    // ================================
 
     if (!state.creds.registered) {
       const number = process.env.BOT_NUMBER;
 
       if (!number) {
-        console.log("❌ BOT_NUMBER belum diatur di Railway.");
-        console.log("Contoh: 6281234567890");
-      } else {
-        try {
-          const cleanNumber = number.replace(/\D/g, "");
+        console.log("");
+        console.log("❌ BOT_NUMBER BELUM DIATUR!");
+        console.log("");
+        console.log("Contoh:");
+        console.log("BOT_NUMBER=6281234567890");
+        console.log("");
+        return;
+      }
 
-          console.log("📱 Meminta pairing code...");
-          console.log("📞 Nomor:", cleanNumber);
+      const cleanNumber = number.replace(/\D/g, "");
 
-          const code = await sock.requestPairingCode(
-            cleanNumber
-          );
+      console.log("");
+      console.log("📱 Meminta pairing code...");
+      console.log("📞 Nomor:", cleanNumber);
+      console.log("");
 
-          console.log("");
-          console.log("╔════════════════════════════╗");
-          console.log("║ 🔐 PAIRING CODE ZAZASTORE ║");
-          console.log("╠════════════════════════════╣");
-          console.log(`║ 👉 ${code}                 ║`);
-          console.log("╚════════════════════════════╝");
-          console.log("");
-          console.log(
-            "WhatsApp → Perangkat tertaut → Tautkan perangkat"
-          );
-          console.log(
-            "→ Tautkan dengan nomor telepon"
-          );
-        } catch (error) {
-          console.log(
-            "❌ Pairing gagal:",
-            error?.message || error
-          );
-        }
+      try {
+        const code =
+          await sock.requestPairingCode(cleanNumber);
+
+        console.log("");
+        console.log("================================");
+        console.log("🔐 PAIRING CODE ZAZASTORE");
+        console.log("================================");
+        console.log("");
+        console.log("👉 " + code);
+        console.log("");
+        console.log("================================");
+        console.log("📱 CARA MEMASUKKAN KODE");
+        console.log("================================");
+        console.log("");
+        console.log("WhatsApp");
+        console.log("→ Perangkat tertaut");
+        console.log("→ Tautkan perangkat");
+        console.log("→ Tautkan dengan nomor telepon");
+        console.log("→ Masukkan kode di atas");
+        console.log("");
+        console.log("================================");
+        console.log("");
+      } catch (error) {
+        console.log("");
+        console.log("❌ Gagal mendapatkan pairing code");
+        console.log("❌", error?.message || error);
+        console.log("");
       }
     }
 
-    /*
-     * =========================
-     * CONNECTION
-     * =========================
-     */
-
-    sock.ev.on(
-      "connection.update",
-      ({ connection, lastDisconnect }) => {
-        if (connection === "open") {
-          reconnecting = false;
-
-          console.log("");
-          console.log("╔════════════════════════════╗");
-          console.log("║     ✅ ZAZASTORE ONLINE    ║");
-          console.log("╚════════════════════════════╝");
-          console.log("");
-        }
-
-        if (connection === "close") {
-          const statusCode =
-            lastDisconnect?.error?.output?.statusCode;
-
-          console.log(
-            "❌ WhatsApp terputus. Code:",
-            statusCode
-          );
-
-          if (
-            statusCode !== DisconnectReason.loggedOut
-          ) {
-            console.log("🔄 Menghubungkan kembali...");
-
-            reconnecting = true;
-
-            setTimeout(() => {
-              reconnecting = false;
-              startBot();
-            }, 5000);
-          } else {
-            console.log(
-              "⚠️ Bot logout. Pairing ulang diperlukan."
-            );
-          }
-        }
-      }
-    );
-
-    /*
-     * =========================
-     * MESSAGE HANDLER
-     * =========================
-     */
+    // ================================
+    // PESAN MASUK
+    // ================================
 
     sock.ev.on(
       "messages.upsert",
-      async ({ messages }) => {
+      async ({ messages, type }) => {
         try {
+          if (type !== "notify") return;
+
           const msg = messages[0];
 
-          if (!msg?.message) return;
-          if (msg.key?.fromMe) return;
+          if (!msg) return;
+          if (!msg.message) return;
+          if (msg.key.fromMe) return;
 
           const jid = msg.key.remoteJid;
+
           if (!jid) return;
 
-          const text = getText(msg.message);
-          const command = getCommand(text);
+          const message =
+            msg.message.conversation ||
+            msg.message.extendedTextMessage?.text ||
+            msg.message.imageMessage?.caption ||
+            msg.message.videoMessage?.caption ||
+            "";
 
-          if (!command) return;
+          const text = message.trim();
 
           console.log(
-            `📩 Command: ${command} | From: ${jid}`
+            "📩 Pesan masuk:",
+            text
           );
 
-          switch (command) {
-            case "menu":
-              await sock.sendMessage(jid, {
-                text: MENU
-              });
-              break;
+          // ================================
+          // MENU
+          // ================================
 
-            case "owner":
-              await sock.sendMessage(jid, {
-                text:
-                  "👑 OWNER ZAZASTORE\n\n" +
-                  `Nama: ${OWNER}\n` +
-                  "Hubungi owner untuk informasi lebih lanjut."
-              });
-              break;
+          if (
+            text.toLowerCase() === ".menu" ||
+            text.toLowerCase() === "menu"
+          ) {
+            const menu = `
+╭━━━━━━━━━━━━━━━━━━╮
+       🛍️ *ZAZASTORE*
+╰━━━━━━━━━━━━━━━━━━╯
 
-            case "ping":
-              await sock.sendMessage(jid, {
-                text: "🏓 Pong!\n\n✅ ZazaStore aktif."
-              });
-              break;
+👋 Halo! Selamat datang di ZazaStore.
 
-            case "runtime":
-              await sock.sendMessage(jid, {
-                text:
-                  "⏱️ ZazaStore Runtime\n\n" +
-                  "✅ Bot sedang online."
-              });
-              break;
+📋 *MENU UTAMA*
 
-            case "produk":
-              await sock.sendMessage(jid, {
-                text:
-                  "🛒 PRODUK ZAZASTORE\n\n" +
-                  "Silakan hubungi owner untuk daftar produk."
-              });
-              break;
+▸ .menu
+▸ .owner
+▸ .ping
+▸ .info
 
-            case "harga":
-              await sock.sendMessage(jid, {
-                text:
-                  "💰 HARGA ZAZASTORE\n\n" +
-                  "Silakan hubungi owner untuk informasi harga."
-              });
-              break;
+🛒 *STORE*
 
-            case "order":
-              await sock.sendMessage(jid, {
-                text:
-                  "🛒 ORDER ZAZASTORE\n\n" +
-                  "Ketik format order dan kirim ke owner."
-              });
-              break;
+▸ .produk
+▸ .harga
+▸ .order
 
-            case "payment":
-              await sock.sendMessage(jid, {
-                text:
-                  "💳 PAYMENT ZAZASTORE\n\n" +
-                  "Silakan hubungi owner untuk metode pembayaran."
-              });
-              break;
+💬 *BANTUAN*
 
-            default:
-              await sock.sendMessage(jid, {
-                text:
-                  `❌ Command *${PREFIX}${command}* tidak ditemukan.\n\n` +
-                  `Ketik *${PREFIX}menu* untuk melihat menu.`
-              });
-              break;
+▸ .help
+
+━━━━━━━━━━━━━━━━━━
+🤖 ZazaBot
+⚡ Powered by ZazaStore
+━━━━━━━━━━━━━━━━━━
+`;
+
+            await sock.sendMessage(
+              jid,
+              { text: menu }
+            );
+
+            return;
           }
-        } catch (error) {
-          console.log(
-            "❌ Message error:",
-            error?.message || error
-          );
-        }
-      }
-    );
 
-  } catch (error) {
-    reconnecting = false;
+          // ================================
+          // PING
+          // ================================
 
-    console.log(
-      "❌ Start bot error:",
-      error?.message || error
-    );
+          if (
+            text.toLowerCase() === ".ping"
+          ) {
+            await sock.sendMessage(
+              jid,
+              {
+                text: "🏓 Pong!\n\n✅ ZazaBot aktif."
+              }
+            );
 
-    setTimeout(() => {
-      startBot();
-    }, 5000);
-  }
-}
+            return;
+          }
 
-console.log("🚀 Menjalankan ZazaStore...");
-startBot();
+          // ================================
+          // OWNER
+          // ================================
+
+          if (
+            text.toLowerCase() === ".owner"
+          ) {
+            await sock.sendMessage(
+              jid,
+              {
+                text:
+                  "👤 *OWNER ZAZASTORE*\n\n" +
+                  "Hubungi owner untuk informasi lebih lanjut."
+              }
+            );
+
+            return;
+          }
+
+          // ================================
+          // INFO
+          // ================================
+
+          if (
+            text.toLowerCase() === ".info"
+          ) {
+            await sock.sendMessage(
+              jid,
+              {
+                text:
+                  "🤖 *ZazaBot*\n\n" +
+                  "🛍️ ZazaStore\n" +
+                  "🟢 Status: Aktif\n" +
+                  "⚡ WhatsApp Bot"
+              }
+            );
+
+            return;
+          }
+
+          // ================================
+          // PRODUK
+          // ================================
+
+          if (
+            text.toLowerCase() === ".produk"
+          ) {
+            await sock.sendMessage(
+              jid,
+              {
+                text:
+                  "🛒 *PRODUK ZAZASTORE*\n\n" +
+                  "📦 Produk 1\n" +
+                  "📦 Produk 2\n" +
+                  "📦 Produk 3\n\n" +
+                  "Gunakan *.order* untuk melakukan pemesanan."
+              }
+            );
+
+            return;
+          }
+
+          // ================================
+          // HARGA
+          // ================================
+
+          if (
+            text.toLowerCase() === ".harga"
+         
