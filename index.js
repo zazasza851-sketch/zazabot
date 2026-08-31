@@ -1,10 +1,9 @@
 import makeWASocket, {
-    useMultiFileAuthState,
-    DisconnectReason,
-    Browsers,
-    fetchLatestWaWebVersion
+  useMultiFileAuthState,
+  DisconnectReason,
+  fetchLatestBaileysVersion,
+  Browsers
 } from "@whiskeysockets/baileys";
-import qrcode from "qrcode-terminal";
 
 const BOT_NAME = "ZazaStore";
 const OWNER = "Zaza";
@@ -13,74 +12,66 @@ const PREFIX = ".";
 let reconnecting = false;
 
 const MENU = `
-╭━━━〔 🤖 ZAZASTORE 〕━━━╮
-┃
-┃ 👤 OWNER
-┃ • .owner
-┃
-┃ ⚙️ GENERAL
-┃ • .menu
-┃ • .ping
-┃ • .runtime
-┃
-┃ 🤖 AI
-┃ • .openai
-┃ • .bard
-┃ • .nexara
-┃ • .aiimage
-┃
-┃ 🎮 GAME
-┃ • .akinator
-┃ • .asahotak
-┃ • .caklontong
-┃ • .family100
-┃ • .math
-┃ • .truth
-┃ • .dare
-┃
-┃ 🎨 STICKER
-┃ • .sticker
-┃ • .attp
-┃ • .ttp
-┃ • .toimg
-┃
-┃ 🔎 SEARCH
-┃ • .google
-┃ • .googleimage
-┃ • .wikipedia
-┃ • .ytsearch
-┃ • .lirik
-┃
-┃ 📥 DOWNLOAD
-┃ • .tiktoknowm
-┃ • .tiktokwm
-┃ • .igdl
-┃ • .igreel
-┃ • .facebook
-┃ • .ytmp3
-┃ • .ytmp4
-┃
-┃ 🛠️ TOOLS
-┃ • .qrcode
-┃ • .translate
-┃ • .tts
-┃ • .ocr
-┃ • .shortlink
-┃
-┃ 👥 GROUP
-┃ • .tagall
-┃ • .hidetag
-┃ • .kick
-┃ • .promote
-┃ • .demote
-┃ • .groupinfo
-┃ • .linkgc
-┃ • .antilink
-┃
-╰━━━━━━━━━━━━━━━━━━━━━━╯
-
-Ketik *.menu* untuk melihat menu.
+╭━━━〔 🤖 ${BOT_NAME} 〕━━━╮
+│
+│ 👑 OWNER
+│ • .owner
+│
+│ ⚙️ GENERAL
+│ • .menu
+│ • .ping
+│ • .runtime
+│
+│ 🤖 AI
+│ • .openai
+│ • .bard
+│ • .nexara
+│ • .aiimage
+│
+│ 🎮 GAME
+│ • .tictactoe
+│ • .tebak
+│ • .slot
+│
+│ 🛠️ TOOLS
+│ • .sticker
+│ • .toimg
+│ • .tts
+│ • .shortlink
+│
+│ 📥 DOWNLOADER
+│ • .ytmp3
+│ • .ytmp4
+│ • .tiktok
+│ • .instagram
+│
+│ 🛒 ZAZASTORE
+│ • .produk
+│ • .harga
+│ • .order
+│ • .payment
+│
+╰━━━━━━━━━━━━━━━━━━━━╯
 `;
+
+function getText(message) {
+  return (
+    message?.conversation ||
+    message?.extendedTextMessage?.text ||
+    message?.imageMessage?.caption ||
+    message?.videoMessage?.caption ||
+    ""
+  );
+}
+
+function getCommand(text) {
+  if (!text.startsWith(PREFIX)) return "";
+  return text
+    .slice(PREFIX.length)
+    .trim()
+    .split(/\s+/)[0]
+    .toLowerCase();
+}
 
 async function startBot() {
   if (reconnecting) return;
@@ -89,16 +80,24 @@ async function startBot() {
     const { state, saveCreds } =
       await useMultiFileAuthState("./auth");
 
-const { version } = await fetchLatestWaWebVersion();
+    const { version } = await fetchLatestBaileysVersion();
 
-const sock = makeWASocket({
-    auth: state,
-    version,
-   printQRInTerminal: false,
-    browser: Browsers.windows("Chrome"),
-    markOnlineOnConnect: false,
-    syncFullHistory: false
-});
+    console.log("=================================");
+    console.log(`🤖 ${BOT_NAME}`);
+    console.log("📡 Starting WhatsApp bot...");
+    console.log("📦 Baileys version:", version.join("."));
+    console.log("=================================");
+
+    const sock = makeWASocket({
+      auth: state,
+      version,
+      printQRInTerminal: false,
+      browser: Browsers.windows("Chrome"),
+      markOnlineOnConnect: false,
+      syncFullHistory: false
+    });
+
+    sock.ev.on("creds.update", saveCreds);
 
     /*
      * =========================
@@ -107,47 +106,41 @@ const sock = makeWASocket({
      */
 
     if (!state.creds.registered) {
-    const number = process.env.BOT_NUMBER;
+      const number = process.env.BOT_NUMBER;
+
       if (!number) {
-        console.log(
-          "❌ BOT_NUMBER belum diatur di Railway."
-        );
+        console.log("❌ BOT_NUMBER belum diatur di Railway.");
+        console.log("Contoh: 6281234567890");
       } else {
-        setTimeout(async () => {
-          try {
-            const cleanNumber =
-              number.replace(/\D/g, "");
+        try {
+          const cleanNumber = number.replace(/\D/g, "");
 
-            console.log(
-              "📱 Meminta pairing code..."
-            );
+          console.log("📱 Meminta pairing code...");
+          console.log("📞 Nomor:", cleanNumber);
 
-            const code =
-              await sock.requestPairingCode(
-                cleanNumber
-              );
+          const code = await sock.requestPairingCode(
+            cleanNumber
+          );
 
-            console.log("");
-            console.log(
-              "================================"
-            );
-            console.log(
-              "🔐 PAIRING CODE ZAZASTORE"
-            );
-            console.log(
-              "👉 " + code
-            );
-            console.log(
-              "================================"
-            );
-            console.log("");
-          } catch (error) {
-            console.log(
-              "❌ Pairing gagal:",
-              error.message
-            );
-          }
-        }, 5000);
+          console.log("");
+          console.log("╔════════════════════════════╗");
+          console.log("║ 🔐 PAIRING CODE ZAZASTORE ║");
+          console.log("╠════════════════════════════╣");
+          console.log(`║ 👉 ${code}                 ║`);
+          console.log("╚════════════════════════════╝");
+          console.log("");
+          console.log(
+            "WhatsApp → Perangkat tertaut → Tautkan perangkat"
+          );
+          console.log(
+            "→ Tautkan dengan nomor telepon"
+          );
+        } catch (error) {
+          console.log(
+            "❌ Pairing gagal:",
+            error?.message || error
+          );
+        }
       }
     }
 
@@ -159,71 +152,40 @@ const sock = makeWASocket({
 
     sock.ev.on(
       "connection.update",
-      async (update) => {
-        const {
-          connection,
-          lastDisconnect
-        } = update;
-
-        if (connection === "connecting") {
-          console.log(
-            "🔄 ZazaStore sedang menghubungkan..."
-          );
-        }
-
+      ({ connection, lastDisconnect }) => {
         if (connection === "open") {
           reconnecting = false;
 
           console.log("");
-          console.log(
-            "╔══════════════════════╗"
-          );
-          console.log(
-            "║   🤖 ZAZASTORE       ║"
-          );
-          console.log(
-            "║   ✅ BOT ONLINE      ║"
-          );
-          console.log(
-            "╚══════════════════════╝"
-          );
+          console.log("╔════════════════════════════╗");
+          console.log("║     ✅ ZAZASTORE ONLINE    ║");
+          console.log("╚════════════════════════════╝");
           console.log("");
         }
 
         if (connection === "close") {
           const statusCode =
-            lastDisconnect
-              ?.error
-              ?.output
-              ?.statusCode;
+            lastDisconnect?.error?.output?.statusCode;
 
           console.log(
-            "❌ Koneksi terputus:",
+            "❌ WhatsApp terputus. Code:",
             statusCode
           );
 
           if (
-            statusCode !==
-            DisconnectReason.loggedOut
+            statusCode !== DisconnectReason.loggedOut
           ) {
-            if (!reconnecting) {
-              reconnecting = true;
+            console.log("🔄 Menghubungkan kembali...");
 
-              console.log(
-                "🔄 Reconnect 5 detik..."
-              );
+            reconnecting = true;
 
-              setTimeout(() => {
-                reconnecting = false;
-                startBot();
-              }, 5000);
-            }
+            setTimeout(() => {
+              reconnecting = false;
+              startBot();
+            }, 5000);
           } else {
             console.log(
-              "❌ WhatsApp logout."
-            );
-            console.log(
-              "⚠️ Hapus session auth lalu pairing ulang."
+              "⚠️ Bot logout. Pairing ulang diperlukan."
             );
           }
         }
@@ -232,7 +194,7 @@ const sock = makeWASocket({
 
     /*
      * =========================
-     * PESAN MASUK
+     * MESSAGE HANDLER
      * =========================
      */
 
@@ -242,293 +204,113 @@ const sock = makeWASocket({
         try {
           const msg = messages[0];
 
-          if (!msg) return;
-          if (!msg.message) return;
-          if (msg.key.fromMe) return;
+          if (!msg?.message) return;
+          if (msg.key?.fromMe) return;
 
-          const jid =
-            msg.key.remoteJid;
-
+          const jid = msg.key.remoteJid;
           if (!jid) return;
 
-          const text =
-            msg.message.conversation ||
-            msg.message.extendedTextMessage
-              ?.text ||
-            msg.message.imageMessage
-              ?.caption ||
-            msg.message.videoMessage
-              ?.caption ||
-            "";
+          const text = getText(msg.message);
+          const command = getCommand(text);
 
-          if (!text) return;
+          if (!command) return;
 
-          const body =
-            text.trim();
-
-          if (!body.startsWith(PREFIX)) {
-            return;
-          }
-
-          const args =
-            body
-              .slice(PREFIX.length)
-              .trim()
-              .split(/\s+/);
-
-          const command =
-            args
-              .shift()
-              ?.toLowerCase();
-
-          /*
-           * =========================
-           * MENU
-           * =========================
-           */
-
-          if (command === "menu") {
-            await sock.sendMessage(
-              jid,
-              {
-                text: MENU
-              }
-            );
-            return;
-          }
-
-          /*
-           * =========================
-           * PING
-           * =========================
-           */
-
-          if (command === "ping") {
-            const start =
-              Date.now();
-
-            await sock.sendMessage(
-              jid,
-              {
-                text:
-                  "🏓 *PONG!*\n\n" +
-                  "🤖 Bot: ZazaStore\n" +
-                  "⚡ Status: Online\n" +
-                  "📡 Speed: " +
-                  (Date.now() - start) +
-                  " ms"
-              }
-            );
-            return;
-          }
-
-          /*
-           * =========================
-           * OWNER
-           * =========================
-           */
-
-          if (command === "owner") {
-            await sock.sendMessage(
-              jid,
-              {
-                text:
-                  "👑 *OWNER ZAZASTORE*\n\n" +
-                  "Nama: " + OWNER +
-                  "\nBot: " + BOT_NAME
-              }
-            );
-            return;
-          }
-
-          /*
-           * =========================
-           * RUNTIME
-           * =========================
-           */
-
-          if (command === "runtime") {
-            const total =
-              Math.floor(
-                process.uptime()
-              );
-
-            const hours =
-              Math.floor(
-                total / 3600
-              );
-
-            const minutes =
-              Math.floor(
-                (total % 3600) / 60
-              );
-
-            const seconds =
-              total % 60;
-
-            await sock.sendMessage(
-              jid,
-              {
-                text:
-                  "⏱️ *ZAZASTORE RUNTIME*\n\n" +
-                  hours +
-                  " jam " +
-                  minutes +
-                  " menit " +
-                  seconds +
-                  " detik"
-              }
-            );
-
-            return;
-          }
-
-          /*
-           * =========================
-           * STATUS
-           * =========================
-           */
-
-          if (command === "status") {
-            await sock.sendMessage(
-              jid,
-              {
-                text:
-                  "🤖 *ZazaStore Status*\n\n" +
-                  "✅ Bot aktif\n" +
-                  "✅ WhatsApp terhubung\n" +
-                  "✅ Server berjalan"
-              }
-            );
-
-            return;
-          }
-  // =========================
-  // GAME
-  // =========================
-
-  if (command === "dare") {
-    const dare = [
-      "Kirim foto paling kocak di galeri kamu 😂",
-      "Sebutkan 3 hal yang kamu sukai.",
-      "Chat temanmu: Aku punya rahasia 🤫",
-      "Buat status WhatsApp yang lucu.",
-      "Nyanyikan lagu favoritmu selama 10 detik 🎤"
-    ];
-
-    const random = dare[Math.floor(Math.random() * dare.length)];
-
-    await sock.sendMessage(jid, {
-      text: "🎯 *DARE ZAZASTORE*\n\n" + random
-    });
-
-    return;
-  }
-
-  if (command === "truth") {
-    const truth = [
-      "Siapa orang terakhir yang kamu chat?",
-      "Apa kebiasaan burukmu?",
-      "Pernah bohong kepada teman?",
-      "Siapa orang yang paling sering kamu pikirkan?",
-      "Apa hal paling memalukan yang pernah kamu lakukan?"
-    ];
-
-    const random = truth[Math.floor(Math.random() * truth.length)];
-
-    await sock.sendMessage(jid, {
-      text: "💭 *TRUTH ZAZASTORE*\n\n" + random
-    });
-
-    return;
-  }
-
-  if (command === "botinfo") {
-    await sock.sendMessage(jid, {
-      text:
-        "🤖 *ZazaStore Bot Info*\n\n" +
-        "👑 Owner: " + OWNER + "\n" +
-        "🤖 Bot: " + BOT_NAME + "\n" +
-        "⚡ Status: Online\n" +
-        "🟢 WhatsApp: Terhubung"
-    });
-
-    return;
-  }
-
-  if (command === "produk") {
-    await sock.sendMessage(jid, {
-      text:
-        "🛍️ *ZAZASTORE*\n\n" +
-        "📦 Produk tersedia\n" +
-        "💰 Harga: Hubungi owner\n" +
-        "📲 Order: .order\n\n" +
-        "Ketik *.order* untuk melakukan pemesanan."
-    });
-
-    return;
-  }
-
-  if (command === "order") {
-    await sock.sendMessage(jid, {
-      text:
-        "🛒 *ORDER ZAZASTORE*\n\n" +
-        "Silakan kirim:\n" +
-        "1. Nama produk\n" +
-        "2. Jumlah\n" +
-        "3. Nama pembeli\n\n" +
-        "Pesanan akan diproses oleh owner."
-    });
-
-    return;
-  }
-          /*
-           * =========================
-           * UNKNOWN COMMAND
-           * =========================
-           */
-
-          await sock.sendMessage(
-            jid,
-            {
-              text:
-                "❌ Command tidak ditemukan.\n\n" +
-                "Ketik *.menu* untuk melihat daftar command."
-            }
+          console.log(
+            `📩 Command: ${command} | From: ${jid}`
           );
 
+          switch (command) {
+            case "menu":
+              await sock.sendMessage(jid, {
+                text: MENU
+              });
+              break;
+
+            case "owner":
+              await sock.sendMessage(jid, {
+                text:
+                  "👑 OWNER ZAZASTORE\n\n" +
+                  `Nama: ${OWNER}\n` +
+                  "Hubungi owner untuk informasi lebih lanjut."
+              });
+              break;
+
+            case "ping":
+              await sock.sendMessage(jid, {
+                text: "🏓 Pong!\n\n✅ ZazaStore aktif."
+              });
+              break;
+
+            case "runtime":
+              await sock.sendMessage(jid, {
+                text:
+                  "⏱️ ZazaStore Runtime\n\n" +
+                  "✅ Bot sedang online."
+              });
+              break;
+
+            case "produk":
+              await sock.sendMessage(jid, {
+                text:
+                  "🛒 PRODUK ZAZASTORE\n\n" +
+                  "Silakan hubungi owner untuk daftar produk."
+              });
+              break;
+
+            case "harga":
+              await sock.sendMessage(jid, {
+                text:
+                  "💰 HARGA ZAZASTORE\n\n" +
+                  "Silakan hubungi owner untuk informasi harga."
+              });
+              break;
+
+            case "order":
+              await sock.sendMessage(jid, {
+                text:
+                  "🛒 ORDER ZAZASTORE\n\n" +
+                  "Ketik format order dan kirim ke owner."
+              });
+              break;
+
+            case "payment":
+              await sock.sendMessage(jid, {
+                text:
+                  "💳 PAYMENT ZAZASTORE\n\n" +
+                  "Silakan hubungi owner untuk metode pembayaran."
+              });
+              break;
+
+            default:
+              await sock.sendMessage(jid, {
+                text:
+                  `❌ Command *${PREFIX}${command}* tidak ditemukan.\n\n` +
+                  `Ketik *${PREFIX}menu* untuk melihat menu.`
+              });
+              break;
+          }
         } catch (error) {
           console.log(
-            "❌ Error message:",
-            error.message
+            "❌ Message error:",
+            error?.message || error
           );
         }
       }
     );
 
   } catch (error) {
+    reconnecting = false;
+
     console.log(
-      "❌ Error startBot:",
-      error.message
+      "❌ Start bot error:",
+      error?.message || error
     );
 
-    setTimeout(
-      startBot,
-      5000
-    );
+    setTimeout(() => {
+      startBot();
+    }, 5000);
   }
 }
 
-/*
- * =========================
- * START ZAZASTORE
- * =========================
- */
-
-console.log("");
-console.log(
-  "🤖 ZazaStore sedang dijalankan..."
-);
-console.log("");
-
+console.log("🚀 Menjalankan ZazaStore...");
 startBot();
