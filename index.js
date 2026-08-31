@@ -1,8 +1,7 @@
-const {
-  default: makeWASocket,
+import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason
-} = require("@whiskeysockets/baileys");
+} from "@whiskeysockets/baileys";
 
 const BOT_NAME = "ZazaStore";
 const OWNER = "Zaza";
