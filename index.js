@@ -103,8 +103,7 @@ async function startBot() {
      */
 
     if (!state.creds.registered) {
-      const number = process.env.BOT_NUMBER;
-
+    const number = process.env.BOT_NUMBER;
       if (!number) {
         console.log(
           "❌ BOT_NUMBER belum diatur di Railway."
