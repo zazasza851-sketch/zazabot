@@ -188,7 +188,4 @@ async function startBot() {
         "⚠️ BOT_NUMBER belum diatur."
       );
     }
-  }
-}
-
 startBot();
