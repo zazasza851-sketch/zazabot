@@ -93,7 +93,7 @@ const { version } = await fetchLatestWaWebVersion();
 const sock = makeWASocket({
     auth: state,
     version,
-    printQRInTerminal: false,
+    printQRInTerminal: true,
     browser: Browsers.windows("Chrome"),
     markOnlineOnConnect: false,
     syncFullHistory: false
