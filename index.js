@@ -87,13 +87,14 @@ async function startBot() {
     const { state, saveCreds } =
       await useMultiFileAuthState("./auth");
 
-    const sock = makeWASocket({
-      auth: state,
-      printQRInTerminal: false,
-      browser: Browsers.ubuntu("Chrome"),
-      markOnlineOnConnect: false,
-      syncFullHistory: false
-    });
+  const sock = makeWASocket({
+    auth: state,
+    printQRInTerminal: false,
+    browser: Browsers.windows("Chrome"),
+    markOnlineOnConnect: false,
+    syncFullHistory: false
+});
+    
 
     sock.ev.on("creds.update", saveCreds);
 
