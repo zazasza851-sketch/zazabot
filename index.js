@@ -1,7 +1,8 @@
 import makeWASocket, {
-  useMultiFileAuthState,
-  DisconnectReason,
-  Browsers
+    useMultiFileAuthState,
+    DisconnectReason,
+    Browsers,
+    fetchLatestWaWebVersion
 } from "@whiskeysockets/baileys";
 
 const BOT_NAME = "ZazaStore";
@@ -87,8 +88,11 @@ async function startBot() {
     const { state, saveCreds } =
       await useMultiFileAuthState("./auth");
 
-  const sock = makeWASocket({
+const { version } = await fetchLatestWaWebVersion();
+
+const sock = makeWASocket({
     auth: state,
+    version,
     printQRInTerminal: false,
     browser: Browsers.windows("Chrome"),
     markOnlineOnConnect: false,
