@@ -100,7 +100,6 @@ const sock = makeWASocket({
     syncFullHistory: false
 });
 
-  if
     /*
      * =========================
      * PAIRING CODE
