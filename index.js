@@ -400,7 +400,85 @@ async function startBot() {
 
             return;
           }
+  // =========================
+  // GAME
+  // =========================
 
+  if (command === "dare") {
+    const dare = [
+      "Kirim foto paling kocak di galeri kamu 😂",
+      "Sebutkan 3 hal yang kamu sukai.",
+      "Chat temanmu: Aku punya rahasia 🤫",
+      "Buat status WhatsApp yang lucu.",
+      "Nyanyikan lagu favoritmu selama 10 detik 🎤"
+    ];
+
+    const random = dare[Math.floor(Math.random() * dare.length)];
+
+    await sock.sendMessage(jid, {
+      text: "🎯 *DARE ZAZASTORE*\n\n" + random
+    });
+
+    return;
+  }
+
+  if (command === "truth") {
+    const truth = [
+      "Siapa orang terakhir yang kamu chat?",
+      "Apa kebiasaan burukmu?",
+      "Pernah bohong kepada teman?",
+      "Siapa orang yang paling sering kamu pikirkan?",
+      "Apa hal paling memalukan yang pernah kamu lakukan?"
+    ];
+
+    const random = truth[Math.floor(Math.random() * truth.length)];
+
+    await sock.sendMessage(jid, {
+      text: "💭 *TRUTH ZAZASTORE*\n\n" + random
+    });
+
+    return;
+  }
+
+  if (command === "botinfo") {
+    await sock.sendMessage(jid, {
+      text:
+        "🤖 *ZazaStore Bot Info*\n\n" +
+        "👑 Owner: " + OWNER + "\n" +
+        "🤖 Bot: " + BOT_NAME + "\n" +
+        "⚡ Status: Online\n" +
+        "🟢 WhatsApp: Terhubung"
+    });
+
+    return;
+  }
+
+  if (command === "produk") {
+    await sock.sendMessage(jid, {
+      text:
+        "🛍️ *ZAZASTORE*\n\n" +
+        "📦 Produk tersedia\n" +
+        "💰 Harga: Hubungi owner\n" +
+        "📲 Order: .order\n\n" +
+        "Ketik *.order* untuk melakukan pemesanan."
+    });
+
+    return;
+  }
+
+  if (command === "order") {
+    await sock.sendMessage(jid, {
+      text:
+        "🛒 *ORDER ZAZASTORE*\n\n" +
+        "Silakan kirim:\n" +
+        "1. Nama produk\n" +
+        "2. Jumlah\n" +
+        "3. Nama pembeli\n\n" +
+        "Pesanan akan diproses oleh owner."
+    });
+
+    return;
+  }
           /*
            * =========================
            * UNKNOWN COMMAND
