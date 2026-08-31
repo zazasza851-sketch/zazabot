@@ -1,191 +1,454 @@
-import makeWASocket, {
+const {
+  default: makeWASocket,
   useMultiFileAuthState,
   DisconnectReason
-} from "@whiskeysockets/baileys";
+} = require("@whiskeysockets/baileys");
 
-const BOT_NAME = "ZazaBot";
+const BOT_NAME = "ZazaStore";
 const OWNER = "Zaza";
-const startTime = Date.now();
+const PREFIX = ".";
 
-async function startBot() {
-  const { state, saveCreds } =
-    await useMultiFileAuthState("./auth");
+let reconnecting = false;
 
-  const sock = makeWASocket({
-    auth: state,
-    printQRInTerminal: false
-  });
+const MENU = `
+╭━━━〔 🤖 ZAZASTORE 〕━━━╮
+┃
+┃ 👤 OWNER
+┃ • .owner
+┃
+┃ ⚙️ GENERAL
+┃ • .menu
+┃ • .ping
+┃ • .runtime
+┃
+┃ 🤖 AI
+┃ • .openai
+┃ • .bard
+┃ • .nexara
+┃ • .aiimage
+┃
+┃ 🎮 GAME
+┃ • .akinator
+┃ • .asahotak
+┃ • .caklontong
+┃ • .family100
+┃ • .math
+┃ • .truth
+┃ • .dare
+┃
+┃ 🎨 STICKER
+┃ • .sticker
+┃ • .attp
+┃ • .ttp
+┃ • .toimg
+┃
+┃ 🔎 SEARCH
+┃ • .google
+┃ • .googleimage
+┃ • .wikipedia
+┃ • .ytsearch
+┃ • .lirik
+┃
+┃ 📥 DOWNLOAD
+┃ • .tiktoknowm
+┃ • .tiktokwm
+┃ • .igdl
+┃ • .igreel
+┃ • .facebook
+┃ • .ytmp3
+┃ • .ytmp4
+┃
+┃ 🛠️ TOOLS
+┃ • .qrcode
+┃ • .translate
+┃ • .tts
+┃ • .ocr
+┃ • .shortlink
+┃
+┃ 👥 GROUP
+┃ • .tagall
+┃ • .hidetag
+┃ • .kick
+┃ • .promote
+┃ • .demote
+┃ • .groupinfo
+┃ • .linkgc
+┃ • .antilink
+┃
+╰━━━━━━━━━━━━━━━━━━━━━━╯
 
-  sock.ev.on("creds.update", saveCreds);
-
-  sock.ev.on("connection.update", async (update) => {
-    const { connection, lastDisconnect } = update;
-
-    if (connection === "connecting") {
-      console.log("🔄 ZazaBot sedang menghubungkan...");
-    }
-
-    if (connection === "open") {
-      console.log("✅ ZazaBot ONLINE!");
-    }
-
-    if (connection === "close") {
-      const code = lastDisconnect?.error?.output?.statusCode;
-
-      if (code !== DisconnectReason.loggedOut) {
-        console.log("🔄 Menghubungkan ulang...");
-        startBot();
-      } else {
-        console.log("❌ ZazaBot logout.");
-      }
-    }
-  });
-
-  // Pesan masuk
-  sock.ev.on("messages.upsert", async ({ messages }) => {
-    const msg = messages[0];
-
-    if (!msg?.message || msg.key.fromMe) return;
-
-    const jid = msg.key.remoteJid;
-
-    const text =
-      msg.message.conversation ||
-      msg.message.extendedTextMessage?.text ||
-      "";
-
-    const command = text.trim().toLowerCase();
-
-    // PING
-    if (command === ".ping") {
-      await sock.sendMessage(jid, {
-        text: "🏓 Pong!\n\n🤖 ZazaBot aktif!"
-      });
-    }
-
-    // OWNER
-    else if (command === ".owner") {
-      await sock.sendMessage(jid, {
-        text:
-          "👑 *OWNER ZAZABOT*\n\n" +
-          "Nama: " + OWNER + "\n" +
-          "Bot: " + BOT_NAME
-      });
-    }
-
-    // RUNTIME
-    else if (command === ".runtime") {
-      const seconds =
-        Math.floor((Date.now() - startTime) / 1000);
-
-      const hours = Math.floor(seconds / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
-      const secs = seconds % 60;
-
-      await sock.sendMessage(jid, {
-        text:
-          "⏱️ *RUNTIME ZAZABOT*\n\n" +
-          `${hours} jam ${minutes} menit ${secs} detik`
-      });
-    }
-
-    // MENU
-    else if (command === ".menu" || command === ".help") {
-      const menu = `
-╭━━━〔 🤖 ZAZABOT 〕━━━╮
-│
-│ 👑 OWNER
-│ • .owner
-│
-│ ⚙️ GENERAL
-│ • .ping
-│ • .runtime
-│ • .menu
-│
-│ 👥 GROUP
-│ • .antilink
-│ • .tagall
-│ • .hidetag
-│ • .kick
-│ • .promote
-│ • .demote
-│ • .linkgc
-│
-│ 🤖 AI
-│ • .ai
-│ • .openai
-│
-│ 🎮 GAME
-│ • .math
-│ • .truth
-│ • .dare
-│
-│ 🎲 RANDOM
-│ • .pantun
-│ • .puisi
-│ • .quotesanime
-│
-│ 🔍 SEARCH
-│ • .google
-│ • .wikipedia
-│ • .ytsearch
-│
-│ 🖼️ STICKER
-│ • .sticker
-│ • .toimg
-│ • .ttp
-│
-│ 🛠️ TOOLS
-│ • .qrcode
-│ • .translate
-│ • .tts
-│
-│ 📥 DOWNLOAD
-│ • .tiktok
-│ • .ytmp3
-│ • .ytmp4
-│
-│ 🏪 ZAZASTORE
-│ • WhatsApp Bot
-│ • Website
-│
-╰━━━━━━━━━━━━━━━━━━╯
-
-© 2026 ZazaBot
+Ketik *.menu* untuk melihat menu.
 `;
 
-      await sock.sendMessage(jid, {
-        text: menu
-      });
+async function startBot() {
+  if (reconnecting) return;
+
+  try {
+    const { state, saveCreds } =
+      await useMultiFileAuthState("./auth");
+
+    const sock = makeWASocket({
+      auth: state,
+      printQRInTerminal: false,
+      browser: ["ZazaStore", "Chrome", "1.0.0"],
+      markOnlineOnConnect: false,
+      syncFullHistory: false
+    });
+
+    sock.ev.on("creds.update", saveCreds);
+
+    /*
+     * =========================
+     * PAIRING CODE
+     * =========================
+     */
+
+    if (!state.creds.registered) {
+      const number = process.env.BOT_NUMBER;
+
+      if (!number) {
+        console.log(
+          "❌ BOT_NUMBER belum diatur di Railway."
+        );
+      } else {
+        setTimeout(async () => {
+          try {
+            const cleanNumber =
+              number.replace(/\D/g, "");
+
+            console.log(
+              "📱 Meminta pairing code..."
+            );
+
+            const code =
+              await sock.requestPairingCode(
+                cleanNumber
+              );
+
+            console.log("");
+            console.log(
+              "================================"
+            );
+            console.log(
+              "🔐 PAIRING CODE ZAZASTORE"
+            );
+            console.log(
+              "👉 " + code
+            );
+            console.log(
+              "================================"
+            );
+            console.log("");
+          } catch (error) {
+            console.log(
+              "❌ Pairing gagal:",
+              error.message
+            );
+          }
+        }, 5000);
+      }
     }
-  });
 
-  // Pairing Code
-  if (!state.creds.registered) {
-    const number = process.env.BOT_NUMBER;
+    /*
+     * =========================
+     * CONNECTION
+     * =========================
+     */
 
-    if (number) {
-      try {
-        const code =
-          await sock.requestPairingCode(
-            number.replace(/\D/g, "")
+    sock.ev.on(
+      "connection.update",
+      async (update) => {
+        const {
+          connection,
+          lastDisconnect
+        } = update;
+
+        if (connection === "connecting") {
+          console.log(
+            "🔄 ZazaStore sedang menghubungkan..."
+          );
+        }
+
+        if (connection === "open") {
+          reconnecting = false;
+
+          console.log("");
+          console.log(
+            "╔══════════════════════╗"
+          );
+          console.log(
+            "║   🤖 ZAZASTORE       ║"
+          );
+          console.log(
+            "║   ✅ BOT ONLINE      ║"
+          );
+          console.log(
+            "╚══════════════════════╝"
+          );
+          console.log("");
+        }
+
+        if (connection === "close") {
+          const statusCode =
+            lastDisconnect
+              ?.error
+              ?.output
+              ?.statusCode;
+
+          console.log(
+            "❌ Koneksi terputus:",
+            statusCode
           );
 
-        console.log("");
-        console.log("================================");
-        console.log("📱 PAIRING CODE ZAZABOT");
-        console.log("👉 " + code);
-        console.log("================================");
-        console.log("");
-      } catch (error) {
-        console.log(
-          "❌ Gagal membuat pairing code:",
-          error.message
-        );
+          if (
+            statusCode !==
+            DisconnectReason.loggedOut
+          ) {
+            if (!reconnecting) {
+              reconnecting = true;
+
+              console.log(
+                "🔄 Reconnect 5 detik..."
+              );
+
+              setTimeout(() => {
+                reconnecting = false;
+                startBot();
+              }, 5000);
+            }
+          } else {
+            console.log(
+              "❌ WhatsApp logout."
+            );
+            console.log(
+              "⚠️ Hapus session auth lalu pairing ulang."
+            );
+          }
+        }
       }
-    } else {
-      console.log(
-        "⚠️ BOT_NUMBER belum diatur."
-      );
-    }
+    );
+
+    /*
+     * =========================
+     * PESAN MASUK
+     * =========================
+     */
+
+    sock.ev.on(
+      "messages.upsert",
+      async ({ messages }) => {
+        try {
+          const msg = messages[0];
+
+          if (!msg) return;
+          if (!msg.message) return;
+          if (msg.key.fromMe) return;
+
+          const jid =
+            msg.key.remoteJid;
+
+          if (!jid) return;
+
+          const text =
+            msg.message.conversation ||
+            msg.message.extendedTextMessage
+              ?.text ||
+            msg.message.imageMessage
+              ?.caption ||
+            msg.message.videoMessage
+              ?.caption ||
+            "";
+
+          if (!text) return;
+
+          const body =
+            text.trim();
+
+          if (!body.startsWith(PREFIX)) {
+            return;
+          }
+
+          const args =
+            body
+              .slice(PREFIX.length)
+              .trim()
+              .split(/\s+/);
+
+          const command =
+            args
+              .shift()
+              ?.toLowerCase();
+
+          /*
+           * =========================
+           * MENU
+           * =========================
+           */
+
+          if (command === "menu") {
+            await sock.sendMessage(
+              jid,
+              {
+                text: MENU
+              }
+            );
+            return;
+          }
+
+          /*
+           * =========================
+           * PING
+           * =========================
+           */
+
+          if (command === "ping") {
+            const start =
+              Date.now();
+
+            await sock.sendMessage(
+              jid,
+              {
+                text:
+                  "🏓 *PONG!*\n\n" +
+                  "🤖 Bot: ZazaStore\n" +
+                  "⚡ Status: Online\n" +
+                  "📡 Speed: " +
+                  (Date.now() - start) +
+                  " ms"
+              }
+            );
+            return;
+          }
+
+          /*
+           * =========================
+           * OWNER
+           * =========================
+           */
+
+          if (command === "owner") {
+            await sock.sendMessage(
+              jid,
+              {
+                text:
+                  "👑 *OWNER ZAZASTORE*\n\n" +
+                  "Nama: " + OWNER +
+                  "\nBot: " + BOT_NAME
+              }
+            );
+            return;
+          }
+
+          /*
+           * =========================
+           * RUNTIME
+           * =========================
+           */
+
+          if (command === "runtime") {
+            const total =
+              Math.floor(
+                process.uptime()
+              );
+
+            const hours =
+              Math.floor(
+                total / 3600
+              );
+
+            const minutes =
+              Math.floor(
+                (total % 3600) / 60
+              );
+
+            const seconds =
+              total % 60;
+
+            await sock.sendMessage(
+              jid,
+              {
+                text:
+                  "⏱️ *ZAZASTORE RUNTIME*\n\n" +
+                  hours +
+                  " jam " +
+                  minutes +
+                  " menit " +
+                  seconds +
+                  " detik"
+              }
+            );
+
+            return;
+          }
+
+          /*
+           * =========================
+           * STATUS
+           * =========================
+           */
+
+          if (command === "status") {
+            await sock.sendMessage(
+              jid,
+              {
+                text:
+                  "🤖 *ZazaStore Status*\n\n" +
+                  "✅ Bot aktif\n" +
+                  "✅ WhatsApp terhubung\n" +
+                  "✅ Server berjalan"
+              }
+            );
+
+            return;
+          }
+
+          /*
+           * =========================
+           * UNKNOWN COMMAND
+           * =========================
+           */
+
+          await sock.sendMessage(
+            jid,
+            {
+              text:
+                "❌ Command tidak ditemukan.\n\n" +
+                "Ketik *.menu* untuk melihat daftar command."
+            }
+          );
+
+        } catch (error) {
+          console.log(
+            "❌ Error message:",
+            error.message
+          );
+        }
+      }
+    );
+
+  } catch (error) {
+    console.log(
+      "❌ Error startBot:",
+      error.message
+    );
+
+    setTimeout(
+      startBot,
+      5000
+    );
+  }
+}
+
+/*
+ * =========================
+ * START ZAZASTORE
+ * =========================
+ */
+
+console.log("");
+console.log(
+  "🤖 ZazaStore sedang dijalankan..."
+);
+console.log("");
+
 startBot();
