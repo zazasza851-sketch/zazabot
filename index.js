@@ -4,6 +4,7 @@ import makeWASocket, {
     Browsers,
     fetchLatestWaWebVersion
 } from "@whiskeysockets/baileys";
+import qrcode from "qrcode-terminal";
 
 const BOT_NAME = "ZazaStore";
 const OWNER = "Zaza";
@@ -93,14 +94,19 @@ const { version } = await fetchLatestWaWebVersion();
 const sock = makeWASocket({
     auth: state,
     version,
-    printQRInTerminal: true,
+   printQRInTerminal: false,
     browser: Browsers.windows("Chrome"),
     markOnlineOnConnect: false,
     syncFullHistory: false
 });
     
 
-    sock.ev.on("creds.update", saveCreds);
+    sock.ev.on("connection.update", ({ qr }) => {
+  if (qr) {
+    console.log("📱 QR CODE:");
+    qrcode.generate(qr, { small: true });
+  }
+});;
 
     /*
      * =========================
