@@ -99,15 +99,8 @@ const sock = makeWASocket({
     markOnlineOnConnect: false,
     syncFullHistory: false
 });
-    
 
-    sock.ev.on("connection.update", ({ qr }) => {
-  if (qr) {
-    console.log("📱 QR CODE:");
-    qrcode.generate(qr, { small: true });
-  }
-});;
-
+  if
     /*
      * =========================
      * PAIRING CODE
