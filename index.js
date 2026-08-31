@@ -1,9 +1,6 @@
 import makeWASocket, {
   useMultiFileAuthState,
-  import makeWASocket, {
-  useMultiFileAuthState,
-  DisconnectReason,
-  Browsers
+  DisconnectReason
 } from "@whiskeysockets/baileys";
 
 const BOT_NAME = "ZazaStore";
